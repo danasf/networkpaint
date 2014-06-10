@@ -8,7 +8,7 @@
 	</style>
 </head>
 <body>
-	<h1>Here's something</h1>
+	<h1>Draw something</h1>
 	<p>And a paragraph</p>
 	<div id="controls">
 		<button id="eraser">Erase</button>
@@ -34,6 +34,10 @@
 	    console.log(data);
 	    socket.emit('event', { my: 'data' });
 	  });
+	  socket.on('newLine', function (d) {
+	  		console.log("Incoming line!");
+	  		board.drawLine(d.x1,d.y1,d.x2,d.y2,d.color,d.size);
+	  });
 
 
 	 var board = new WhiteBoard(800,800);
@@ -48,7 +52,6 @@
  		board.isDrawing = true;
  	});
 
-
  	board.canvas.addEventListener("mouseup",function(mouse) {
  		board.isDrawing = false;
  		endX = mouse.pageX-board.canvas.offsetLeft;
@@ -56,9 +59,23 @@
  		board.context.lineTo(endX,endY);
  		board.context.closePath();
  		board.context.stroke();
- 		socket.emit("newLine",{ x1:startX,y1:startY,x2:endX,y2:endY });
+ 		socket.emit("newLine",{ x1:startX,y1:startY,x2:endX,y2:endY,color:board.context.strokeStyle,size:board.context.lineWidth});
 
  	});
+
+ 	 board.canvas.addEventListener("mousemove",function(mouse) {
+ 	 	if(board.isDrawing) {
+ 	 		/*var prevX = curX;
+ 	 		var prevY = prevY;
+
+ 	 		var curX = mouse.pageX-board.canvas.offsetLeft;
+ 	 		var curY = mouse.pageY-board.canvas.offsetTop;
+ 	 		board.context.lineTo(curX,curY);*/
+
+ 	 	}
+ 
+ 	});
+
 
 
 	 // controls
@@ -97,13 +114,23 @@
 	 	this.context.strokeStyle = "#ff0000";
 	 	this.context.lineWidth = 5;
 
+
 	 }	
 
 	 WhiteBoard.prototype.clear = function() {
 	 	this.context.clearRect(0,0,this.canvas.width,this.canvas.height);
 	 };
 
+	WhiteBoard.prototype.drawLine = function(x1,y1,x2,y2,color,size) {
+		this.context.strokeStyle = color;
+	 	this.context.lineWidth = size;
+ 		this.context.beginPath();
+ 		this.context.moveTo(x1,y1);
+ 		this.context.lineTo(x2,y2);
+		this.context.closePath();
+ 		this.context.stroke();
 
+	}
 
 
 	</script>
