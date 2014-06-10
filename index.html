@@ -1,0 +1,112 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Draw something</title>
+	<style type="text/css">
+		#canvas { border:3px dashed #333;}
+	</style>
+</head>
+<body>
+	<h1>Here's something</h1>
+	<p>And a paragraph</p>
+	<div id="controls">
+		<button id="eraser">Erase</button>
+		<select id="stroke">
+			<option value="5">5</option>
+			<option value="10">10</option>
+			<option value="15">15</option>
+			<option value="20">20</option>
+		</select>
+		<input type="text" id="color" value="#FF0000" />
+
+	</div>
+	<canvas id="canvas"></canvas>
+	<script src="/socket.io/socket.io.js"></script>
+
+	<script>
+
+	  var startX,startY,endX,endY;
+
+	  // socket io
+	  var socket = io.connect('http://localhost:8888');
+	  socket.on('message', function (data) {
+	    console.log(data);
+	    socket.emit('event', { my: 'data' });
+	  });
+
+
+	 var board = new WhiteBoard(800,800);
+
+	 // add some listeners
+
+ 	board.canvas.addEventListener("mousedown",function(mouse) {
+ 		board.context.beginPath();
+ 		startX = mouse.pageX-board.canvas.offsetLeft;
+ 		startY = mouse.pageY-board.canvas.offsetTop;
+ 		board.context.moveTo(startX,startY);
+ 		board.isDrawing = true;
+ 	});
+
+
+ 	board.canvas.addEventListener("mouseup",function(mouse) {
+ 		board.isDrawing = false;
+ 		endX = mouse.pageX-board.canvas.offsetLeft;
+ 		endY = mouse.pageY-board.canvas.offsetTop;
+ 		board.context.lineTo(endX,endY);
+ 		board.context.closePath();
+ 		board.context.stroke();
+ 		socket.emit("newLine",{ x1:startX,y1:startY,x2:endX,y2:endY });
+
+ 	});
+
+
+	 // controls
+
+	 document.getElementById("eraser").addEventListener("click",function() {
+	  	board.clear();
+	  },false);
+
+	 document.getElementById("color").addEventListener("change",function(e) {
+	 	console.log("New Color:",e.target.value);
+	 	board.context.strokeStyle = e.target.value;
+
+	 },false);
+
+	 document.getElementById("stroke").addEventListener("change",function(e) {
+	 	console.log("New Width:",e.target.value);
+	 	board.context.lineWidth = e.target.value;
+	 },false);
+
+	/*document.getElementById("canvas").addEventListener("drag", function(e) {
+		console.log("dragging.....");
+  	}, false);*/
+
+
+	 // white board
+
+	 function WhiteBoard(h,w) {
+
+	 	// init the canvas
+	 	this.canvas = document.getElementById("canvas");
+	 	this.canvas.height = h;
+	 	this.canvas.width = w;
+	 	this.context = this.canvas.getContext('2d');
+	 	this.isDrawing = false;
+	 	this.context.fillStyle = "solid";
+	 	this.context.strokeStyle = "#ff0000";
+	 	this.context.lineWidth = 5;
+
+	 }	
+
+	 WhiteBoard.prototype.clear = function() {
+	 	this.context.clearRect(0,0,this.canvas.width,this.canvas.height);
+	 };
+
+
+
+
+	</script>
+</body>
+
+</html>
