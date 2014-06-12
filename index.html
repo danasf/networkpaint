@@ -4,13 +4,17 @@
 	<meta charset="UTF-8">
 	<title>Draw something</title>
 	<style type="text/css">
+		body { background:url(./img/wall.jpg) center no-repeat; }
 		#canvas { border:3px dashed #333;}
+		h1 { font-family: 'Permanent Marker', cursive; font-size:5em; }
+		input,button,select { font-family: 'Permanent Marker', cursive; font-size:2em; }
 	</style>
+	<link href='http://fonts.googleapis.com/css?family=Permanent+Marker' rel='stylesheet' type='text/css'>
 </head>
 <body>
-	<h1>Draw something</h1>
-	<p>And a paragraph</p>
-	<div id="controls">
+	<div id="container">
+	<h1>Graffiti</h1>
+		<button id="newWall">NewWall</button>
 		<button id="eraser">Erase</button>
 		<select id="stroke">
 			<option value="5">5</option>
@@ -21,57 +25,68 @@
 		<input type="text" id="color" value="#FF0000" />
 
 	</div>
-	<canvas id="canvas"></canvas>
+	<canvas id="canvas" ></canvas>
+	<div id="chatbox">
+		<p><textarea id="chattext" rows="3"></textarea></p>
+		<p><input id="saysomething" />
+		<button>Send</button></p>
+	</div>
+	</body>
 	<script src="/socket.io/socket.io.js"></script>
 
 	<script>
 
-	  var startX,startY,endX,endY;
+	  var endX,endY,curX,curY;
 
 	  // socket io
-	  var socket = io.connect('http://localhost:8888');
+	  var socket = io.connect('http://10.0.5.49:8888');
 	  socket.on('message', function (data) {
 	    console.log(data);
 	    socket.emit('event', { my: 'data' });
 	  });
 	  socket.on('newLine', function (d) {
-	  		console.log("Incoming line!");
-	  		board.drawLine(d.x1,d.y1,d.x2,d.y2,d.color,d.size);
+	  	board.drawLine(d.x1,d.y1,d.x2,d.y2,d.color,d.size);
 	  });
 
+	  socket.on('erase', function () {
+	  	board.clear();
+	  });
 
-	 var board = new WhiteBoard(800,800);
+	  socket.on('chat', function (d) {
+	  	chat.messages.innerHTML.appendChild("<p>")
+	  });
+
+	 var board = new WhiteBoard(800,1000);
+	 var chat = new Chat();
 
 	 // add some listeners
 
  	board.canvas.addEventListener("mousedown",function(mouse) {
- 		board.context.beginPath();
- 		startX = mouse.pageX-board.canvas.offsetLeft;
- 		startY = mouse.pageY-board.canvas.offsetTop;
- 		board.context.moveTo(startX,startY);
  		board.isDrawing = true;
+ 		board.context.beginPath();
+ 		startX = mouse.clientX-board.canvas.offsetLeft;
+ 		startY = mouse.clientY-board.canvas.offsetTop;
+ 		board.context.moveTo(startX,startY);
  	});
 
  	board.canvas.addEventListener("mouseup",function(mouse) {
  		board.isDrawing = false;
- 		endX = mouse.pageX-board.canvas.offsetLeft;
- 		endY = mouse.pageY-board.canvas.offsetTop;
- 		board.context.lineTo(endX,endY);
  		board.context.closePath();
  		board.context.stroke();
- 		socket.emit("newLine",{ x1:startX,y1:startY,x2:endX,y2:endY,color:board.context.strokeStyle,size:board.context.lineWidth});
+ 		//socket.emit("newLine",{ x1:startX,y1:startY,x2:endX,y2:endY,color:board.context.strokeStyle,size:board.context.lineWidth});
 
  	});
 
  	 board.canvas.addEventListener("mousemove",function(mouse) {
  	 	if(board.isDrawing) {
- 	 		/*var prevX = curX;
- 	 		var prevY = prevY;
-
- 	 		var curX = mouse.pageX-board.canvas.offsetLeft;
- 	 		var curY = mouse.pageY-board.canvas.offsetTop;
- 	 		board.context.lineTo(curX,curY);*/
-
+ 	 		var prevX = curX ? curX : null;
+ 	 		var prevY = curY ? curY : null;
+ 	 		curX = mouse.clientX-board.canvas.offsetLeft;
+ 	 		curY = mouse.clientY-board.canvas.offsetTop;
+	 		board.context.lineTo(curX,curY);
+	 		board.context.stroke();
+	 		board.context.moveTo(curX,curY);
+	 		socket.emit("newLine",{ x1:prevX,y1:prevY,x2:curX,y2:curY,color:board.context.strokeStyle,size:board.context.lineWidth});
  	 	}
  
  	});
@@ -85,9 +100,10 @@
 	  },false);
 
 	 document.getElementById("color").addEventListener("change",function(e) {
-	 	console.log("New Color:",e.target.value);
-	 	board.context.strokeStyle = e.target.value;
-
+	 		if(e.target.value.match(/([0-9A-F]){6}/i) != null ) {
+	 			console.log("New Color:",e.target.value);
+	 			board.context.strokeStyle = e.target.value;
+	 		}
 	 },false);
 
 	 document.getElementById("stroke").addEventListener("change",function(e) {
@@ -104,7 +120,7 @@
 
 	 function WhiteBoard(h,w) {
 
-	 	// init the canvas
+	 	// init the canvas and basic settings
 	 	this.canvas = document.getElementById("canvas");
 	 	this.canvas.height = h;
 	 	this.canvas.width = w;
@@ -113,8 +129,7 @@
 	 	this.context.fillStyle = "solid";
 	 	this.context.strokeStyle = "#ff0000";
 	 	this.context.lineWidth = 5;
-
-
+	 	this.context.lineCap = 'round';
 	 }	
 
 	 WhiteBoard.prototype.clear = function() {
@@ -122,6 +137,8 @@
 	 };
 
 	WhiteBoard.prototype.drawLine = function(x1,y1,x2,y2,color,size) {
+		this.context.closePath();
+		this.context.moveTo(x1,y1);
 		this.context.strokeStyle = color;
 	 	this.context.lineWidth = size;
  		this.context.beginPath();
@@ -130,6 +147,14 @@
 		this.context.closePath();
  		this.context.stroke();
 
+	}
+
+	// chat
+
+	function Chat() {
+		this.message = document.getElementById("chatbox");
+		this.mytext = document.getElementById("chattext");
+		this.button = document.getElementById("sendMessage");
 	}
 
 
