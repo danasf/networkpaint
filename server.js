@@ -3,7 +3,7 @@ io = require('socket.io').listen(server),
 fs = require('fs'),
 url = require('url');
 
-server.listen(8888);
+server.listen(4000);
 
 function handler(req,res) {
   console.log("new HTTP connection");
